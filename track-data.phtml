@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+  <meta charset="utf-8">
+  <title>Simple Polylines</title>
+  <style>
+      /* Always set the map height explicitly to define the size of the div
+      * element that contains the map. */
+      #map {
+        height: 100%;
+      }
+      /* Optional: Makes the sample page fill the window. */
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <script>
+      function initMap() {
+        var map = new google.maps.Map(document.getElementById('map'), {
+          zoom: 13,
+          center: {lat: <?php echo $this->user['latitude']; ?>, lng: <?php echo $this->user['longitude']; ?>},
+          mapTypeId: google.maps.MapTypeId.ROADMAP
+        });
+
+        var flightPlanCoordinates = [
+        <?php foreach($this->locations as $location){ ?>
+          {lat: <?php echo $location['lat'];?>, lng: <?php echo $location['lng'];?>},
+        <?php } ?>
+        ];
+        var flightPath = new google.maps.Polyline({
+          path: flightPlanCoordinates,
+          geodesic: true,
+          strokeColor: '#FF0000',
+          strokeOpacity: 1.0,
+          strokeWeight: 2
+        });
+
+        flightPath.setMap(map);
+
+        var startLatLng = {lat: <?php echo $this->locations[0]['lat'];?>, lng: <?php echo $this->locations[0]['lng'];?>};
+        var marker = new google.maps.Marker({
+          position: startLatLng,
+          map: map,
+          icon: '/images/start-location.png',
+          title: 'Day Started!'
+        });
+
+        var endLatLng = {lat: <?php echo $this->locations[count($this->locations)-1]['lat'];?>, lng: <?php echo $this->locations[count($this->locations)-1]['lng'];?>};
+        var marker = new google.maps.Marker({
+          position: endLatLng,
+          map: map,
+          icon: '/images/end-location.png',
+          title: 'Last Location!'
+        });
+
+
+      }
+    </script>
+    <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD67PS69UkNREHH5pkb1E-zCy7iWKSNgE4&callback=initMap">
+  </script>
+
+</body>
+</html>
