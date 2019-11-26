@@ -1,0 +1,199 @@
+<style>
+  #map {
+    height: 100%;
+  }
+
+</style>
+<div id="content-wrapper">
+  <ul class="breadcrumb breadcrumb-page">
+    <li><a href="/home"><i class="menu-icon fa fa-dashboard"></i> Dashboard</a></li>
+    <li><a href="">Track User</a></li>
+    <li class="active"><a href="">Locate Site</a></li>
+  </ul>
+  <div class="page-header">
+
+    <div class="row">
+
+
+      <div class="col-xs-12 col-sm-12">
+        <div class="panel panel-dark panel-info">
+          <div class="panel-heading">
+            <span class="panel-title"><i class="panel-title-icon fa fa-tasks"></i>Track User </span>
+          </div>
+
+          <div class="panel-body">
+            <form action="" method="POST" role="form" onsubmit="return validateForm();">
+              <div class="row" id="row_1">
+
+                <div class="col-md-3">
+                  <div class="form-group">
+                    <label for="">From Site</label>
+                    <select class="form-control"  id="from_site" name="from_site"  required>
+                      <option value="">Select Site</option>
+                      <?php foreach ($this->om_sites as $om_site) {?>
+                        <option value="<?php echo $om_site['id']; ?>" <?php echo isset($this->from_site) && $this->from_site['id'] == $om_site['id'] ? "selected":""  ?>><?php echo $om_site['site_name']; ?> (<?php echo $om_site['site_id']; ?>)</option>
+                      <?php } ?>
+                    </select>
+                  </div>
+                </div>
+
+
+                <div class="col-md-3">
+                  <div class="form-group">
+                    <label for="">From Site</label>
+                    <select class="form-control"  id="to_site" name="to_site"  required>
+                      <option value="">Select Site</option>
+                      <?php foreach ($this->om_sites as $om_site) {?>
+                        <option value="<?php echo $om_site['id']; ?>" <?php echo isset($this->to_site) && $this->to_site['id'] == $om_site['id'] ? "selected":""  ?>><?php echo $om_site['site_name']; ?> (<?php echo $om_site['site_id']; ?>)</option>
+                      <?php } ?>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="col-md-2">
+                  <div class="form-group">
+                    <label for="">Travel mode</label>
+                    <select class="form-control"  id="travel_mode" name="travel_mode"  required>
+                      <option value="DRIVING" <?php echo isset($this->travel_mode) && $this->travel_mode == "DRIVING" ?"selected":""; ?>>Driving</option>
+                      <option value="WALKING" <?php echo isset($this->travel_mode) && $this->travel_mode == "WALKING" ?"selected":""; ?>>Walking</option>
+                      <option value="BICYCLING" <?php echo isset($this->travel_mode) && $this->travel_mode == "BICYCLING" ?"selected":""; ?>>Bicycling</option>
+                      <option value="TRANSIT" <?php echo isset($this->travel_mode) && $this->travel_mode == "TRANSIT" ?"selected":""; ?>>Transit</option>
+                    </select>
+                  </div>
+                </div>
+
+
+                <div class="col-md-2">
+                  <div class="form-group">
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <?php if(isset($this->from_site)){ ?>
+      <div class="row">
+        <div class="col-md-6">
+          <p>Total Distance : <span id="total_distance"></span></p>
+          <p>Total Duration : <span id="total_duration"></span></p>
+        </div>
+      </div>
+    <?php } ?>
+
+    <div class="row">
+      <div class="col-md-12">
+        <div id="map"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/assets/javascripts/jquery.min.js"></script>
+<script type="text/javascript">
+
+  $(document).ready(function() {
+    $("#from_site").select2({
+      allowClear: true,
+    });
+    $("#to_site").select2({
+      allowClear: true,
+    });
+  });
+
+  function initMap() {
+    <?php if(isset($this->from_site)){ ?>
+      var pointA = new google.maps.LatLng(<?php echo $this->from_site['lat']; ?>, <?php echo $this->from_site['lng']; ?>),
+      pointB = new google.maps.LatLng(<?php echo $this->to_site['lat']; ?>, <?php echo $this->to_site['lng']; ?>),
+
+      myOptions = {
+        zoom: 8,
+        center: pointA,
+        mapTypeId: google.maps.MapTypeId.ROADMAP
+
+      },
+      map = new google.maps.Map(document.getElementById('map'), myOptions),
+
+      directionsService = new google.maps.DirectionsService,
+      directionsDisplay = new google.maps.DirectionsRenderer({
+        map: map
+      }),
+      markerA = new google.maps.Marker({
+        position: pointA,
+        title: "<?php echo $this->from_site['site_name']; ?>",
+        label: "<?php echo $this->from_site['site_name']; ?>",
+        map: map
+      }),
+      markerB = new google.maps.Marker({
+        position: pointB,
+        title: "<?php echo $this->to_site['site_name']; ?>",
+        label: "<?php echo $this->to_site['site_name']; ?>",
+        map: map
+      });
+
+  // get route from A to B
+  calculateAndDisplayRoute(directionsService, directionsDisplay, pointA, pointB);
+<?php } ?>
+
+}
+
+
+
+function calculateAndDisplayRoute(directionsService, directionsDisplay, pointA, pointB) {
+  var selectedMode = document.getElementById('travel_mode').value;
+  directionsService.route({
+    origin: pointA,
+    destination: pointB,
+    travelMode: google.maps.TravelMode[selectedMode]
+  }, function(response, status) {
+    console.log(response);
+    if (status == google.maps.DirectionsStatus.OK) {
+      directionsDisplay.setDirections(response);
+
+      var distance = Math.round(directionsDisplay.getDirections().routes[directionsDisplay.getRouteIndex()].legs[0].distance.value / 1000) + " Km";
+      console.log(distance);
+      $('#total_distance').text(distance);
+
+    } else {
+      window.alert('Directions request failed due to ' + status);
+    }
+  });
+
+  var service = new google.maps.DistanceMatrixService();
+  service.getDistanceMatrix(
+  {
+    origins: [pointA],
+    destinations: [pointB],
+    travelMode: google.maps.TravelMode[selectedMode]
+  }, callback);
+
+  function callback(response, status) {
+    if (status == 'OK') {
+      var origins = response.originAddresses;
+      var destinations = response.destinationAddresses;
+      for (var i = 0; i < origins.length; i++) {
+        var results = response.rows[i].elements;
+        console.log(results);
+        for (var j = 0; j < results.length; j++) {
+          var element = results[j];
+          if(element.status !== "ZERO_RESULTS"){
+              // console.log(element);
+              var distance = element.distance.text;
+              var duration = element.duration.text;
+              $('#total_duration').text(duration);
+              var from = origins[i];
+              var to = destinations[j];
+            }
+          }
+        }
+      }
+    }
+  }
+
+</script>
+<script async defer
+src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD67PS69UkNREHH5pkb1E-zCy7iWKSNgE4&callback=initMap">
+</script>
+</script>
