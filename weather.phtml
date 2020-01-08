@@ -1,0 +1,209 @@
+<style>
+  ul.breadcrumb-top li{
+   display:inline-block;
+   position:relative;
+   margin:1em 0;
+ }
+ ul.breadcrumb-top{
+   float:right;
+   width:50%; 
+ }
+</style>
+<style>
+  #map-canvas {
+    width: 82%;
+    height: 85%;
+    position: fixed!important;
+  }
+  .gm-style-iw {
+    text-align: center;
+  }
+</style>
+<script type="text/javascript"
+src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD67PS69UkNREHH5pkb1E-zCy7iWKSNgE4&libraries=geometry">
+</script>
+<script>
+  var map;
+  var geoJSON;
+  var request;
+  var gettingData = false;
+  markers = [];
+  var openWeatherMapKey = "e73c6294077a9e56ae36c69ab8dc999f";
+
+  <?php $lat = array("27.55933330859989");?>
+  <?php 
+  foreach ($lat as $value1)
+  {
+    ?>
+    function initialize() {
+      var myLatlng = new google.maps.LatLng(<?php echo $value1; ?>,80.68448407575488)
+      var mapOptions = {
+        zoom: 8,
+        center: myLatlng
+      };
+      map = new google.maps.Map(document.getElementById('map-canvas'),
+        mapOptions);
+      google.maps.event.addListener(map, 'idle', checkIfDataRequested);
+      map.data.addListener('click', function(event) {
+        infowindow.setContent(
+         "<img src=" + event.feature.getProperty("icon") + ">"
+         + "<br /><strong>" + event.feature.getProperty("city") + "</strong>"
+         + "<br />" + event.feature.getProperty("temperature") + "&deg;C"
+         + "<br />" + event.feature.getProperty("weather")
+         );
+        infowindow.setOptions({
+          position:{
+            lat: event.latLng.lat(),
+            lng: event.latLng.lng()
+          },
+          pixelOffset: {
+            width: 0,
+            height: -15
+          }
+        });
+        infowindow.open(map);
+      });
+      var marker = new google.maps.Marker({
+        position:  myLatlng,
+        map: map
+      });
+
+    }
+
+
+    <?php
+  }
+  ?>
+
+  var checkIfDataRequested = function() {
+    // Stop extra requests being sent
+    while (gettingData === true) {
+      request.abort();
+      gettingData = false;
+    }
+    getCoords();
+  }; 
+
+  // Get the coordinates from the Map bounds
+  var getCoords = function() {
+    var bounds = map.getBounds();
+    var NE = bounds.getNorthEast();
+    var SW = bounds.getSouthWest();
+    getWeather(NE.lat(), NE.lng(), SW.lat(), SW.lng());
+  };
+
+  // Make the weather request
+  var getWeather = function(northLat, eastLng, southLat, westLng) {
+    gettingData = true;
+    var requestString = "http://api.openweathermap.org/data/2.5/box/city?bbox="
+    + westLng + "," + northLat + "," 
+    + eastLng + "," + southLat + "," 
+    + map.getZoom()
+    + "&cluster=yes&format=json"
+    + "&APPID=" + openWeatherMapKey;
+    console.log(requestString);
+    request = new XMLHttpRequest();
+    request.onload = proccessResults;
+    request.open("get", requestString, true);
+    request.send();
+  };
+  // Take the JSON results and proccess them
+  var proccessResults = function() {
+    console.log(this);
+    var results = JSON.parse(this.responseText);
+    if (results.list.length > 0) {
+      resetData();
+      for (var i = 0; i < results.list.length; i++) {
+        geoJSON.features.push(jsonToGeoJson(results.list[i]));
+
+      }
+      console.log(geoJSON)
+      drawIcons(geoJSON);
+
+    }
+  };
+  var infowindow = new google.maps.InfoWindow();
+  // For each result that comes back, convert the data to geoJSON
+  var jsonToGeoJson = function (weatherItem) {
+    console.log(weatherItem.coord);
+    var feature = {
+      type: "Feature",
+      properties: {
+        city: weatherItem.name,
+        weather: weatherItem.weather[0].main,
+        temperature: weatherItem.main.temp,
+        min: weatherItem.main.temp_min,
+        max: weatherItem.main.temp_max,
+        humidity: weatherItem.main.humidity,
+        pressure: weatherItem.main.pressure,
+        windSpeed: weatherItem.wind.speed,
+        windDegrees: weatherItem.wind.deg,
+        windGust: weatherItem.wind.gust,
+        icon: "http://openweathermap.org/img/w/"
+        + weatherItem.weather[0].icon  + ".png",
+        coordinates: [weatherItem.coord.Lon, weatherItem.coord.Lat]
+      },
+      geometry: {
+        type: "Point",
+        coordinates: [weatherItem.coord.Lon, weatherItem.coord.Lat]
+      }
+    };
+    // Set the custom marker icon
+    map.data.setStyle(function(feature) {
+      return {
+        icon: {
+          url: feature.getProperty('icon'),
+          anchor: new google.maps.Point(25, 25)
+        }
+      };
+    });
+    // returns object
+    return feature;
+  };
+  // Add the markers to the map
+  var drawIcons = function (weather) {
+   map.data.addGeoJson(geoJSON);
+     // Set the flag to finished
+     gettingData = false;
+   };
+  // Clear data layer and geoJSON
+  var resetData = function () {
+    geoJSON = {
+      type: "FeatureCollection",
+      features: []
+    };
+    map.data.forEach(function(feature) {
+      map.data.remove(feature);
+    });
+  };
+  
+  google.maps.event.addDomListener(window, 'load', initialize);
+
+</script>
+
+<div class="content">
+  <div class="header">
+    <h1 class="page-title" style="float:left;width:20%">Weather Condition</h1>
+    <ul class="breadcrumb-top" style="float: right; width: 38%;">
+      <li><a href="/dashboard">Home</a> <span class="divider">/</span></li>
+      <li><a href="/gmap/weather">Weather Condition</a> </li>
+
+    </ul>
+    <?php if($this->errorMessage!='') { ?>
+      <div class="alert alert-warning">
+        <button data-dismiss="alert" class="close" type="button">×</button>
+        <?php echo $this->errorMessage;?>
+      </div>  
+    <?php } ?>
+  </div>
+
+  
+  <div class="container-fluid">
+    <div class="row-fluid" style="margin-top: -51px; margin-left: -20px;">
+
+      <div id="map-canvas"></div>
+
+    </div>
+    
+  </div>
+</div>
